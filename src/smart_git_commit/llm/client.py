@@ -3,7 +3,6 @@
 This module provides an OpenAI SDK-based implementation of the LLMProvider protocol.
 """
 
-from typing import Optional
 
 from openai import AsyncOpenAI, OpenAIError
 
@@ -33,7 +32,7 @@ class OpenAIProvider:
             config: LLM configuration with API settings
         """
         self.config = config
-        self._client: Optional[AsyncOpenAI] = None
+        self._client: AsyncOpenAI | None = None
 
     def _get_client(self) -> AsyncOpenAI:
         """Get or create the OpenAI client.
@@ -52,7 +51,7 @@ class OpenAIProvider:
     async def generate(
         self,
         prompt: str,
-        context: Optional[dict] = None,
+        context: dict | None = None,
     ) -> str:
         """Generate a response using OpenAI API.
 
@@ -90,10 +89,26 @@ class OpenAIProvider:
 
         except OpenAIError as e:
             logger.error(f"OpenAI API error: {e}")
+            error_str = str(e).lower()
+
+            # Provide more specific suggestions based on error type
+            if "404" in error_str or "not found" in error_str:
+                suggestion = (
+                    "Check your base_url is correct.\n"
+                    "For OpenAI, use: https://api.openai.com/v1\n"
+                    "For custom APIs, ensure the endpoint path is correct"
+                )
+            elif "401" in error_str or "unauthorized" in error_str:
+                suggestion = "Check your API key is correct and valid"
+            elif "connection" in error_str or "network" in error_str:
+                suggestion = "Check your network connection and try again"
+            else:
+                suggestion = "Check your API key and network connection"
+
             raise LLMError(
                 f"LLM API error: {e}",
                 exit_code=5,
-                suggestion="Check your API key and network connection",
+                suggestion=suggestion,
             ) from e
 
     def validate_config(self) -> bool:
@@ -124,7 +139,19 @@ class OpenAIProvider:
             await client.models.list()
             return True
         except Exception as e:
-            logger.error(f"Connection test failed: {e}")
+            error_str = str(e).lower()
+            if "404" in error_str or "not found" in error_str:
+                logger.error(
+                    f"Connection test failed: 404 Not Found - "
+                    f"Check your base_url is correct (e.g., 'https://api.openai.com/v1')"
+                )
+            elif "401" in error_str or "unauthorized" in error_str or "api key" in error_str:
+                logger.error(
+                    f"Connection test failed: Invalid API key - "
+                    f"Check your API key is correct"
+                )
+            else:
+                logger.error(f"Connection test failed: {e}")
             return False
 
 

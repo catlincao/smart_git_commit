@@ -4,29 +4,33 @@ This module provides the Typer-based command-line interface for the tool,
 including the main command, configuration wizard, and help text.
 """
 
+from __future__ import annotations
+
 import asyncio
 import os
 import subprocess
-import sys
+import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import typer
+from pydantic import SecretStr
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
 from rich.text import Text
 
 from smart_git_commit import __version__
-from smart_git_commit.config import Config, ConfigManager, load_config
+from smart_git_commit.config import Config, ConfigManager
 from smart_git_commit.config.models import GLOBAL_CONFIG_PATH
-from pydantic import SecretStr
-from smart_git_commit.config.wizard import run_wizard
 from smart_git_commit.exceptions import ConfigError, GitError, LLMError, SmartGitCommitError
 from smart_git_commit.generator import generate_commit_message
 from smart_git_commit.git import GitRepository, RepositoryStatus
 from smart_git_commit.llm.client import OpenAIProvider
 from smart_git_commit.utils import ExitCode, get_logger, setup_logging
+
+if TYPE_CHECKING:
+    from smart_git_commit.generator.engine import GeneratedMessage
 
 app = typer.Typer(
     name="sgc",
@@ -46,7 +50,7 @@ def version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-v",
@@ -67,13 +71,13 @@ def generate(
         "-s",
         help="Skip interactive prompts and commit directly",
     ),
-    config_path: Optional[Path] = typer.Option(
+    config_path: Path | None = typer.Option(  # noqa: B008
         None,
         "--config-file",
         "-c",
         help="Path to custom configuration file",
     ),
-    verbose: bool = typer.Option(
+    verbose: bool = typer.Option(  # noqa: B008
         False,
         "--verbose",
         help="Enable verbose logging",
@@ -86,16 +90,16 @@ def generate(
         asyncio.run(_generate_commit(silence, config_path))
     except SmartGitCommitError as e:
         _display_error(e)
-        raise typer.Exit(code=e.exit_code)
+        raise typer.Exit(code=e.exit_code) from None
     except KeyboardInterrupt:
         console.print("\n[yellow]Operation cancelled by user[/yellow]")
-        raise typer.Exit(code=ExitCode.USER_CANCELLED)
+        raise typer.Exit(code=ExitCode.USER_CANCELLED) from None
 
 
-async def _generate_commit(silence: bool, config_path: Optional[Path]) -> None:
+async def _generate_commit(silence: bool, config_path: Path | None) -> None:
     """Main commit generation logic."""
-    # Step 1: Load configuration
-    config = _load_configuration(config_path)
+    # Step 1: Load configuration (silence mode requires existing config)
+    config = _load_configuration(config_path, silence=silence)
 
     # Step 2: Validate git repository
     repo = GitRepository()
@@ -105,7 +109,10 @@ async def _generate_commit(silence: bool, config_path: Optional[Path]) -> None:
         raise GitError(
             "Not a Git Repository",
             exit_code=ExitCode.NOT_A_REPO,
-            suggestion="Initialize a repository with: git init\nOr navigate to an existing git repository",
+            suggestion=(
+                "Initialize a repository with: git init\n"
+                "Or navigate to an existing git repository"
+            ),
         )
     elif status == RepositoryStatus.NO_COMMITS:
         raise GitError(
@@ -124,7 +131,7 @@ async def _generate_commit(silence: bool, config_path: Optional[Path]) -> None:
     with console.status("[bold green]Analyzing staged changes..."):
         pass  # Status will be updated below
 
-    with console.status("[bold green]Generating commit message...") as status:
+    with console.status("[bold green]Generating commit message..."):
         try:
             from git import Repo
 
@@ -138,16 +145,16 @@ async def _generate_commit(silence: bool, config_path: Optional[Path]) -> None:
                 suggestion="Check your API configuration and try again",
             ) from e
 
-    # Step 4: Display message
-    _display_message(message.to_full_message())
+    # Step 4: Display message (skip in silence mode)
+    if not silence:
+        _display_message(message.to_full_message())
 
     # Step 5: Handle silence mode or interactive mode
     if silence:
-        if config.behavior.confirm_before_commit and not config.behavior.auto_commit_silence:
-            # Even in silence mode, confirm if configured
-            if not Confirm.ask("Proceed with commit?", default=True):
-                console.print("[yellow]Commit cancelled[/yellow]")
-                return
+        # True silent mode: skip all prompts, commit directly
+        # Only check auto_commit_silence setting
+        if config.behavior.auto_commit_silence:
+            console.print("[dim]Auto-committing in silence mode...[/dim]")
     else:
         # Interactive mode: allow editing
         if Confirm.ask("Edit message?", default=False):
@@ -169,8 +176,19 @@ async def _generate_commit(silence: bool, config_path: Optional[Path]) -> None:
         ) from e
 
 
-def _load_configuration(config_path: Optional[Path]) -> Config:
-    """Load configuration, running wizard if needed."""
+def _load_configuration(config_path: Path | None, silence: bool = False) -> Config:
+    """Load configuration, running wizard if needed.
+
+    Args:
+        config_path: Optional custom config file path
+        silence: If True, require existing config (don't run wizard)
+
+    Returns:
+        Loaded configuration
+
+    Raises:
+        ConfigError: If no config found in silence mode
+    """
     manager = ConfigManager()
 
     if config_path:
@@ -190,7 +208,14 @@ def _load_configuration(config_path: Optional[Path]) -> Config:
     except ConfigError:
         pass
 
-    # No valid configuration found, run wizard
+    # No valid configuration found
+    if silence:
+        raise ConfigError(
+            "No configuration found",
+            suggestion="Run 'sgc --config' to set up configuration first",
+        )
+
+    # Run wizard (interactive mode only)
     console.print("[yellow]No configuration found. Let's set up Smart Git Commit.[/yellow]\n")
     return _run_config_wizard(manager)
 
@@ -248,7 +273,7 @@ def _run_config_wizard(manager: ConfigManager) -> Config:
     except Exception as e:
         console.print(f"[red]✗ Failed: {e}[/red]")
         if not Confirm.ask("Save configuration anyway?", default=False):
-            raise typer.Exit()
+            raise typer.Exit() from None
 
     # Save configuration
     manager.save(global_config=True)
@@ -270,11 +295,11 @@ def config_command() -> None:
         console.print("[yellow]No existing configuration found. Creating new...[/yellow]\n")
 
     try:
-        new_config = _run_config_wizard(manager)
+        _run_config_wizard(manager)
         console.print("\n[green]Configuration updated successfully![/green]")
     except SmartGitCommitError as e:
         _display_error(e)
-        raise typer.Exit(code=e.exit_code)
+        raise typer.Exit(code=e.exit_code) from None
 
 
 def _display_message(message: str) -> None:
@@ -290,16 +315,12 @@ def _display_message(message: str) -> None:
     console.print()
 
 
-def _edit_message(message) -> "GeneratedMessage":
+def _edit_message(message) -> GeneratedMessage:
     """Open editor to edit the commit message."""
-    from smart_git_commit.generator.engine import GeneratedMessage
-
     # Get editor from environment
     editor = os.environ.get("EDITOR", "vim")
 
     # Create temp file with current message
-    import tempfile
-
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".txt", delete=False) as f:
         f.write(message.to_full_message())
         temp_path = f.name
@@ -309,7 +330,7 @@ def _edit_message(message) -> "GeneratedMessage":
         subprocess.run([editor, temp_path], check=True)
 
         # Read edited message
-        with open(temp_path, "r") as f:
+        with open(temp_path) as f:
             edited_text = f.read().strip()
 
         # Parse edited message
@@ -328,10 +349,10 @@ def _edit_message(message) -> "GeneratedMessage":
         return message
     finally:
         # Cleanup
-        try:
+        from contextlib import suppress
+
+        with suppress(OSError):
             os.unlink(temp_path)
-        except OSError:
-            pass
 
 
 def _display_error(error: SmartGitCommitError) -> None:

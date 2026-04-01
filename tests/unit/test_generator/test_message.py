@@ -1,6 +1,5 @@
 """Unit tests for GeneratedMessage formatting."""
 
-import pytest
 
 from smart_git_commit.analyzer.style import CommitType
 from smart_git_commit.generator.engine import GeneratedMessage

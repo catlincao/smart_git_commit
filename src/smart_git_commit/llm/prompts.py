@@ -4,7 +4,6 @@ This module provides prompt generation for LLM-based commit message generation.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from smart_git_commit.analyzer.style import CommitStyle, CommitType
 from smart_git_commit.utils import get_logger
@@ -62,7 +61,10 @@ class PromptBuilder:
             System message string
         """
         lines = [
-            "You are a commit message generator. Your task is to analyze git diffs and generate clear, concise commit messages.",
+            (
+                "You are a commit message generator. Your task is to analyze git diffs "
+                "and generate clear, concise commit messages."
+            ),
             "",
             "Guidelines:",
             "- Write in the imperative mood (e.g., 'add feature' not 'added feature')",
@@ -80,7 +82,8 @@ class PromptBuilder:
                 "Common types:",
             ])
             for commit_type in style.suggested_types[:5]:
-                lines.append(f"  - {commit_type.value}: {PromptBuilder._get_type_description(commit_type)}")
+                type_desc = PromptBuilder._get_type_description(commit_type)
+                lines.append(f"  - {commit_type.value}: {type_desc}")
 
             if style.common_scopes:
                 lines.extend([
@@ -138,7 +141,10 @@ class PromptBuilder:
         if context.was_truncated:
             lines.extend([
                 "",
-                "Note: The diff was truncated due to size. Focus on the file names and types of changes.",
+                (
+                    "Note: The diff was truncated due to size. "
+                    "Focus on the file names and types of changes."
+                ),
             ])
 
         lines.extend([

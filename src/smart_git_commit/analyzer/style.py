@@ -6,7 +6,6 @@ git history analysis with configuration settings.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from git import Repo
 
@@ -94,7 +93,7 @@ class StyleDetector:
         config: User style configuration
     """
 
-    def __init__(self, repo: Repo, config: Optional[StyleConfig] = None) -> None:
+    def __init__(self, repo: Repo, config: StyleConfig | None = None) -> None:
         """Initialize the style detector.
 
         Args:
@@ -142,7 +141,7 @@ class StyleDetector:
         )
 
 
-def detect_style(repo: Repo, config: Optional[StyleConfig] = None) -> CommitStyle:
+def detect_style(repo: Repo, config: StyleConfig | None = None) -> CommitStyle:
     """Convenience function to detect commit style.
 
     Args:

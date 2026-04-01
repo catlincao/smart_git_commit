@@ -4,8 +4,7 @@ This module provides functionality for extracting and analyzing staged changes.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 from git import Repo
 from git.diff import Diff
@@ -33,7 +32,7 @@ class FileChange:
     change_type: ChangeType
     additions: int
     deletions: int
-    diff_content: Optional[str] = None
+    diff_content: str | None = None
 
 
 class DiffExtractor:
@@ -91,7 +90,7 @@ class DiffExtractor:
 
         return changes
 
-    def _parse_diff_item(self, diff_item: Diff) -> Optional[FileChange]:
+    def _parse_diff_item(self, diff_item: Diff) -> FileChange | None:
         """Parse a git diff item into a FileChange.
 
         Args:

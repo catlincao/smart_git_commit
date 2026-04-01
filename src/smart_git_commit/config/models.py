@@ -5,7 +5,6 @@ including LLM settings, style preferences, and behavior settings.
 """
 
 from pathlib import Path
-from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 

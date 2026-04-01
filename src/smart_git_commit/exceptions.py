@@ -4,7 +4,6 @@ This module defines the exception hierarchy used throughout the application
 to provide meaningful error messages and proper error handling.
 """
 
-from typing import Optional
 
 
 class SmartGitCommitError(Exception):
@@ -20,7 +19,7 @@ class SmartGitCommitError(Exception):
         self,
         message: str,
         exit_code: int = 1,
-        suggestion: Optional[str] = None,
+        suggestion: str | None = None,
     ) -> None:
         """Initialize the exception.
 
@@ -54,7 +53,7 @@ class GitError(SmartGitCommitError):
         self,
         message: str,
         exit_code: int = 2,
-        suggestion: Optional[str] = None,
+        suggestion: str | None = None,
     ) -> None:
         """Initialize the git error.
 
@@ -79,7 +78,7 @@ class ConfigError(SmartGitCommitError):
         self,
         message: str,
         exit_code: int = 4,
-        suggestion: Optional[str] = None,
+        suggestion: str | None = None,
     ) -> None:
         """Initialize the config error.
 
@@ -105,7 +104,7 @@ class LLMError(SmartGitCommitError):
         self,
         message: str,
         exit_code: int = 5,
-        suggestion: Optional[str] = None,
+        suggestion: str | None = None,
     ) -> None:
         """Initialize the LLM error.
 
@@ -129,7 +128,7 @@ class ValidationError(SmartGitCommitError):
         self,
         message: str,
         exit_code: int = 1,
-        suggestion: Optional[str] = None,
+        suggestion: str | None = None,
     ) -> None:
         """Initialize the validation error.
 

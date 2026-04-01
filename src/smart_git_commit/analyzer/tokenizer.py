@@ -4,7 +4,6 @@ This module provides functionality for counting tokens using tiktoken
 and truncating diffs to stay within token limits.
 """
 
-from typing import Optional
 
 from smart_git_commit.utils import get_logger
 
@@ -29,9 +28,9 @@ class TokenCounter:
             model: The model name to use for encoding (default: gpt-4o)
         """
         self.model = model
-        self._encoding: Optional[object] = None
+        self._encoding: object | None = None
 
-    def _get_encoding(self) -> Optional[object]:
+    def _get_encoding(self) -> object | None:
         """Get or create the tiktoken encoding.
 
         Returns:

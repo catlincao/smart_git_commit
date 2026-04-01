@@ -1,6 +1,5 @@
 """Unit tests for GitContext model validation."""
 
-import pytest
 from git import Repo
 
 from smart_git_commit.git.diff import FileChange

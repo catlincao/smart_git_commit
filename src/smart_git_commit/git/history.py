@@ -6,7 +6,6 @@ to detect project commit style conventions.
 
 import re
 from collections import Counter
-from typing import Optional
 
 from git import Repo
 from git.objects.commit import Commit

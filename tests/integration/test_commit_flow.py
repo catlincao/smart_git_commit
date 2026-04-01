@@ -1,6 +1,5 @@
 """Integration test for main commit flow."""
 
-import os
 import tempfile
 from pathlib import Path
 
@@ -104,11 +103,9 @@ class TestCommitFlow:
         assert "examples" in style
 
     def test_config_loading(self) -> None:
-        """Test configuration loading."""
-        from smart_git_commit.config import load_config
-
-        # Should load with defaults
-        config = load_config()
+        """Test configuration model defaults."""
+        # Test Config model defaults directly (not loading from file which may have user overrides)
+        config = Config()
 
         assert isinstance(config, Config)
         assert config.llm.model == "gpt-4o-mini"

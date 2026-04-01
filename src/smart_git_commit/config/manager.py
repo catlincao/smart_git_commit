@@ -6,15 +6,14 @@ following a cascading priority: environment variables > project > global > defau
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 from pydantic import ValidationError
 
 from smart_git_commit.config.models import (
+    GLOBAL_CONFIG_PATH,
     PROJECT_CONFIG_NAME,
     Config,
-    GLOBAL_CONFIG_PATH,
 )
 from smart_git_commit.exceptions import ConfigError
 from smart_git_commit.utils import get_logger
@@ -40,9 +39,9 @@ class ConfigManager:
     def __init__(self) -> None:
         """Initialize the config manager with default settings."""
         self.config = Config()
-        self.project_path: Optional[Path] = None
+        self.project_path: Path | None = None
 
-    def load(self, project_dir: Optional[Path] = None) -> Config:
+    def load(self, project_dir: Path | None = None) -> Config:
         """Load configuration from all sources.
 
         Loads configuration following the priority order:
@@ -90,7 +89,7 @@ class ConfigManager:
             ConfigError: If the file cannot be read or parsed
         """
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if data:
@@ -98,23 +97,26 @@ class ConfigManager:
                 data = self._substitute_env_vars(data)
 
                 # Update config with file values
-                self.config = self.config.model_copy(update=data)
+                # Merge with existing config to properly handle nested models
+                current_data = self.config.model_dump()
+                self._deep_merge(current_data, data)
+                self.config = Config.model_validate(current_data)
 
         except yaml.YAMLError as e:
             raise ConfigError(
                 f"Failed to parse config file {path}: {e}",
                 suggestion="Check YAML syntax in the configuration file",
-            )
+            ) from e
         except ValidationError as e:
             raise ConfigError(
                 f"Invalid configuration in {path}: {e}",
                 suggestion="Review configuration values against the schema",
-            )
+            ) from e
         except OSError as e:
             raise ConfigError(
                 f"Cannot read config file {path}: {e}",
                 suggestion="Check file permissions",
-            )
+            ) from e
 
     def _load_from_env(self) -> None:
         """Load configuration from environment variables.
@@ -139,7 +141,22 @@ class ConfigManager:
                 raise ConfigError(
                     f"Invalid environment variable configuration: {e}",
                     suggestion="Check SGC_* environment variables",
-                )
+                ) from e
+
+    def _deep_merge(self, base: dict, override: dict) -> None:
+        """Deep merge override dict into base dict.
+
+        Modifies base in place. Recursively merges nested dictionaries.
+
+        Args:
+            base: Base dictionary to merge into
+            override: Dictionary with values to override
+        """
+        for key, value in override.items():
+            if key in base and isinstance(base[key], dict) and isinstance(value, dict):
+                self._deep_merge(base[key], value)
+            else:
+                base[key] = value
 
     def _substitute_env_vars(self, data: dict) -> dict:
         """Substitute environment variables in config values.
@@ -176,7 +193,7 @@ class ConfigManager:
 
         return substitute(data)
 
-    def save(self, path: Optional[Path] = None, global_config: bool = False) -> None:
+    def save(self, path: Path | None = None, global_config: bool = False) -> None:
         """Save configuration to a file.
 
         Args:
@@ -217,7 +234,7 @@ class ConfigManager:
             raise ConfigError(
                 f"Cannot write config file {save_path}: {e}",
                 suggestion="Check directory permissions",
-            )
+            ) from e
 
     def exists(self) -> bool:
         """Check if any configuration file exists.
@@ -230,7 +247,7 @@ class ConfigManager:
         )
 
 
-def load_config(project_dir: Optional[Path] = None) -> Config:
+def load_config(project_dir: Path | None = None) -> Config:
     """Convenience function to load configuration.
 
     Args:

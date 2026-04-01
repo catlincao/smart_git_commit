@@ -3,8 +3,6 @@
 import subprocess
 import sys
 
-import pytest
-
 
 class TestHelpCommand:
     """Tests for CLI help functionality."""

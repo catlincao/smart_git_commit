@@ -4,14 +4,14 @@ This module provides an interactive CLI wizard for first-time configuration
 of the tool, guiding users through setting up their LLM credentials.
 """
 
+from pathlib import Path
+
+from pydantic import SecretStr
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
-from rich.text import Text
 
 from smart_git_commit.config.manager import ConfigManager
-from pydantic import SecretStr
-
 from smart_git_commit.config.models import GLOBAL_CONFIG_PATH, Config
 from smart_git_commit.exceptions import ConfigError
 from smart_git_commit.llm.client import OpenAIProvider
@@ -173,9 +173,7 @@ class ConfigurationWizard:
         try:
             provider = OpenAIProvider(self.config.llm)
             # For now, just validate config - actual API test would require async
-            if provider.validate_config():
-                return True
-            return False
+            return bool(provider.validate_config())
         except Exception as e:
             logger.error(f"Connection test failed: {e}")
             return False

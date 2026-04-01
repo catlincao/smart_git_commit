@@ -6,7 +6,6 @@ as well as retrieving repository state information.
 
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from git import InvalidGitRepositoryError, Repo
 
@@ -43,7 +42,7 @@ class GitRepository:
         path: Path to the repository root
     """
 
-    def __init__(self, path: Optional[Path] = None) -> None:
+    def __init__(self, path: Path | None = None) -> None:
         """Initialize the repository wrapper.
 
         Args:
@@ -53,7 +52,7 @@ class GitRepository:
             GitError: If the path is not a valid git repository
         """
         self.path = path or Path.cwd()
-        self._repo: Optional[Repo] = None
+        self._repo: Repo | None = None
 
     def _get_repo(self) -> Repo:
         """Get or create the Repo instance.
@@ -91,7 +90,7 @@ class GitRepository:
 
         # Check if repo has any commits
         try:
-            repo.head.commit
+            _ = repo.head.commit
         except ValueError:
             return RepositoryStatus.NO_COMMITS
 

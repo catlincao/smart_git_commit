@@ -6,7 +6,6 @@ This module allows the package to be executed with:
 It simply delegates to the CLI module.
 """
 
-import sys
 
 from smart_git_commit.cli import app
 

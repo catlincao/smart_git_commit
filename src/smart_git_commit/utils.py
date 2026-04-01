@@ -7,7 +7,6 @@ including logging setup, exit code definitions, and helper functions.
 import logging
 import sys
 from enum import IntEnum
-from typing import Optional
 
 
 class ExitCode(IntEnum):
@@ -37,7 +36,7 @@ class ExitCode(IntEnum):
 
 def setup_logging(
     verbose: bool = False,
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
 ) -> logging.Logger:
     """Configure logging for the application.
 

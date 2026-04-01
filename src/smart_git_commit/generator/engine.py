@@ -6,7 +6,6 @@ by combining git analysis, LLM generation, and project style detection.
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from git import Repo
 
@@ -35,11 +34,11 @@ class GeneratedMessage:
         raw_message: The raw generated message
     """
 
-    commit_type: Optional[CommitType] = None
-    scope: Optional[str] = None
+    commit_type: CommitType | None = None
+    scope: str | None = None
     subject: str = ""
-    body: Optional[str] = None
-    breaking_change: Optional[str] = None
+    body: str | None = None
+    breaking_change: str | None = None
     raw_message: str = ""
 
     def to_full_message(self) -> str:
@@ -131,7 +130,6 @@ class MessageGenerator:
         diff = diff_extractor.get_staged_diff()
 
         # Step 2: Get file changes summary
-        file_changes = diff_extractor.get_file_changes()
         summary = diff_extractor.get_summary()
 
         # Step 3: Detect project style
