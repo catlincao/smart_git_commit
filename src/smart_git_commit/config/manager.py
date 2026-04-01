@@ -217,13 +217,14 @@ class ConfigManager:
 
         # Convert SecretStr to string for YAML
         if "llm" in data and "api_key" in data["llm"]:
-            # Keep as environment variable reference if it was one
             api_key = self.config.llm.api_key.get_secret_value()
-            if api_key.startswith("${"):
+            if api_key.startswith("${") and api_key.endswith("}"):
+                # Keep environment variable reference as-is
                 data["llm"]["api_key"] = api_key
             else:
-                # Mask the actual key in comments
-                data["llm"]["api_key"] = "${OPENAI_API_KEY}"
+                # Save actual API key directly
+                # Note: In production, you might want to encrypt this
+                data["llm"]["api_key"] = api_key
 
         try:
             save_path.parent.mkdir(parents=True, exist_ok=True)

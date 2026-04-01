@@ -142,13 +142,13 @@ class OpenAIProvider:
             error_str = str(e).lower()
             if "404" in error_str or "not found" in error_str:
                 logger.error(
-                    f"Connection test failed: 404 Not Found - "
-                    f"Check your base_url is correct (e.g., 'https://api.openai.com/v1')"
+                    "Connection test failed: 404 Not Found - "
+                    "Check your base_url is correct (e.g., 'https://api.openai.com/v1')"
                 )
             elif "401" in error_str or "unauthorized" in error_str or "api key" in error_str:
                 logger.error(
-                    f"Connection test failed: Invalid API key - "
-                    f"Check your API key is correct"
+                    "Connection test failed: Invalid API key - "
+                    "Check your API key is correct"
                 )
             else:
                 logger.error(f"Connection test failed: {e}")

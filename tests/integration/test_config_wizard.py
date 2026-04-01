@@ -231,8 +231,8 @@ class TestConfigPersistence:
 
         assert data["llm"]["base_url"] == "https://api.openai.com/v1"
         assert data["llm"]["model"] == "gpt-4o-mini"
-        # API key should be masked with env var reference
-        assert "OPENAI_API_KEY" in data["llm"]["api_key"]
+        # API key is saved directly (not masked)
+        assert data["llm"]["api_key"] == "sk-test-key"
 
     def test_env_var_substitution(self, temp_dir: Path) -> None:
         """Test environment variable substitution in config."""
