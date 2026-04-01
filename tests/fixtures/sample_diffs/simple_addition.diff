@@ -1,0 +1,15 @@
+diff --git a/src/main.py b/src/main.py
+index 1234567..abcdefg 100644
+--- a/src/main.py
++++ b/src/main.py
+@@ -10,5 +10,10 @@ def main():
+     print("Hello, World!")
+     return 0
+
++def greet(name: str) -> str:
++    """Greet a user by name."""
++    return f"Hello, {name}!"
++
++
+ if __name__ == "__main__":
+     main()

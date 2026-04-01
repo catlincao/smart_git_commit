@@ -1,0 +1,16 @@
+# Mock configuration for testing
+llm:
+  base_url: "https://api.openai.com/v1"
+  model: "gpt-4o-mini"
+  api_key: "${OPENAI_API_KEY}"
+  timeout_seconds: 30
+
+style:
+  language: "en_US"
+  use_semantic_commits: true
+  max_diff_tokens: 4000
+
+behavior:
+  auto_commit_silence: false
+  confirm_before_commit: true
+  show_token_count: false
