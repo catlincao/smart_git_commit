@@ -137,12 +137,15 @@ async def _generate_commit(silence: bool, config_path: Path | None) -> None:
 
             git_repo = Repo()
             message = await generate_commit_message(git_repo, config)
+        except GitError:
+            raise
+        except LLMError:
+            raise
         except Exception as e:
-            if isinstance(e, SmartGitCommitError):
-                raise
-            raise LLMError(
-                f"Failed to generate commit message: {e}",
-                suggestion="Check your API configuration and try again",
+            logger.exception("Unexpected error during commit generation")
+            raise GitError(
+                f"Unexpected error: {e}",
+                suggestion="Try again or check git status",
             ) from e
 
     # Step 4: Display message (skip in silence mode)

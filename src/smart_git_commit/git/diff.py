@@ -3,13 +3,16 @@
 This module provides functionality for extracting and analyzing staged changes.
 """
 
+import re
 from dataclasses import dataclass
 from typing import Literal
 
 from git import Repo
 from git.diff import Diff
+from git.exc import GitCommandError
 
-from smart_git_commit.utils import get_logger
+from smart_git_commit.exceptions import GitError
+from smart_git_commit.utils import ExitCode, get_logger
 
 logger = get_logger()
 
@@ -61,8 +64,18 @@ class DiffExtractor:
 
         Returns:
             The git diff of staged changes
+
+        Raises:
+            GitError: If failed to read staged diff
         """
-        diff = self.repo.git.diff("--cached", "--no-color")
+        try:
+            diff = self.repo.git.diff("--cached", "--no-color")
+        except GitCommandError as e:
+            raise GitError(
+                f"Failed to read staged diff: {e}",
+                suggestion="Make sure you have staged changes with: git add <files>",
+                exit_code=ExitCode.NO_STAGED_CHANGES,
+            ) from e
 
         if len(diff) > self.max_size:
             logger.warning(
@@ -90,6 +103,32 @@ class DiffExtractor:
 
         return changes
 
+    def _get_line_stats(self, path: str) -> tuple[int, int]:
+        """Get line addition/deletion stats for a file using git diff --stat.
+
+        Args:
+            path: Path to the file
+
+        Returns:
+            Tuple of (additions, deletions)
+        """
+        try:
+            stat_output = self.repo.git.diff("--cached", "--no-color", "--", path, "--stat")
+            # Parse output like: "1 file changed, 5 insertions(+), 2 deletions(-)"
+            additions = 0
+            deletions = 0
+            if "insertion" in stat_output:
+                match = re.search(r"(\d+)\s+insertion", stat_output)
+                if match:
+                    additions = int(match.group(1))
+            if "deletion" in stat_output:
+                match = re.search(r"(\d+)\s+deletion", stat_output)
+                if match:
+                    deletions = int(match.group(1))
+            return additions, deletions
+        except Exception:
+            return 0, 0
+
     def _parse_diff_item(self, diff_item: Diff) -> FileChange | None:
         """Parse a git diff item into a FileChange.
 
@@ -113,9 +152,8 @@ class DiffExtractor:
             # Get file path
             path = diff_item.a_path or diff_item.b_path or ""
 
-            # Get line stats
-            additions = diff_item.line_stats[0] if diff_item.line_stats else 0
-            deletions = diff_item.line_stats[1] if diff_item.line_stats else 0
+            # Get line stats using git diff --stat
+            additions, deletions = self._get_line_stats(path)
 
             # Get diff content for this file
             diff_content = self.repo.git.diff(
