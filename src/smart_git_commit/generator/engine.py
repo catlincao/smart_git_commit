@@ -188,6 +188,11 @@ class MessageGenerator:
         Raises:
             ValidationError: If parsing fails
         """
+        # Strip think/reasoning blocks from LLM responses (e.g., o1/o3 models)
+        response = re.sub(
+            r"<think>.*?</think>", "", response, flags=re.DOTALL | re.IGNORECASE
+        ).strip()
+
         lines = response.strip().split("\n")
         subject_line = lines[0] if lines else ""
 
