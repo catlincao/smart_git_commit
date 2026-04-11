@@ -93,8 +93,11 @@ class DiffExtractor:
         """
         changes: list[FileChange] = []
 
-        # Get diff between index and HEAD
-        diffs = self.repo.index.diff("HEAD")
+        # Get diff between index and HEAD (use diff(None) for new repos with no commits)
+        try:
+            diffs = self.repo.index.diff("HEAD")
+        except ValueError:
+            diffs = self.repo.index.diff(None)
 
         for diff_item in diffs:
             change = self._parse_diff_item(diff_item)

@@ -4,6 +4,7 @@ This module provides functions for detecting and validating git repositories,
 as well as retrieving repository state information.
 """
 
+from contextlib import suppress
 from enum import Enum
 from pathlib import Path
 
@@ -88,15 +89,14 @@ class GitRepository:
         except GitError:
             return RepositoryStatus.NOT_A_REPO
 
-        # Check if repo has any commits
-        try:
-            _ = repo.head.commit
-        except ValueError:
-            return RepositoryStatus.NO_COMMITS
-
-        # Check for staged changes
+        # Check for staged changes first (works even with no commits)
         if not self.has_staged_changes():
             return RepositoryStatus.NO_STAGED_CHANGES
+
+        # Check if repo has any commits (needed for diff against HEAD)
+        # Use suppress for new repos where HEAD doesn't exist yet
+        with suppress(ValueError):
+            _ = repo.head.commit
 
         return RepositoryStatus.VALID
 
@@ -116,7 +116,12 @@ class GitRepository:
         """
         try:
             repo = self._get_repo()
-            return len(repo.index.diff("HEAD")) > 0 or len(repo.index.diff(None)) > 0
+            # For repos with commits: compare index with HEAD
+            try:
+                return len(repo.index.diff("HEAD")) > 0
+            except ValueError:
+                # No commits yet - check if index has entries (staged files)
+                return len(repo.index) > 0
         except Exception:
             return False
 
@@ -127,7 +132,11 @@ class GitRepository:
             List of file paths that are staged for commit
         """
         repo = self._get_repo()
-        return [item.a_path for item in repo.index.diff("HEAD")]
+        try:
+            return [item.a_path for item in repo.index.diff("HEAD")]
+        except ValueError:
+            # No commits yet - use diff(None) to get staged files
+            return [item.a_path for item in repo.index.diff(None)]
 
     def get_current_branch(self) -> str:
         """Get the current branch name.
