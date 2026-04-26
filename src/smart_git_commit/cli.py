@@ -11,7 +11,6 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import typer
 from pydantic import SecretStr
@@ -24,13 +23,10 @@ from smart_git_commit import __version__
 from smart_git_commit.config import Config, ConfigManager
 from smart_git_commit.config.models import GLOBAL_CONFIG_PATH
 from smart_git_commit.exceptions import ConfigError, GitError, LLMError, SmartGitCommitError
-from smart_git_commit.generator import generate_commit_message
+from smart_git_commit.generator import GeneratedMessage, generate_commit_message
 from smart_git_commit.git import GitRepository, RepositoryStatus
 from smart_git_commit.llm.client import OpenAIProvider
 from smart_git_commit.utils import ExitCode, get_logger, setup_logging
-
-if TYPE_CHECKING:
-    from smart_git_commit.generator.engine import GeneratedMessage
 
 app = typer.Typer(
     name="sgc",
